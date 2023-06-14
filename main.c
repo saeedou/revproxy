@@ -8,34 +8,50 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/select.h>
 
 
-#define BUFFER_SIZE 4096
-#define PORT 8002
-#define BACKLOG 200
+#define BUFFER_SIZE 64
+#define PORT 8004
+#define BACKLOG 8
 #define IP "127.0.0.1"
 #define handle_error(msg) \
-           do { perror(msg); exit(EXIT_FAILURE); } while (0)
+           do {perror(msg); exit(EXIT_FAILURE);} while (0)
 
 
 int
 main() {
     struct connection {
         int fd;
-        int buffsize;
         int addrlen;
         char buff[BUFFER_SIZE];
     };
 
-    int sfd;
+    int main_socket_fd;
+    struct connection clients[4];
+    struct connection client_conn;
+    int max_client_num;
     struct sockaddr_in server_addr;
     struct sockaddr_in client_addr;
-    struct connection client_conn;
-    client_conn.buffsize = BUFFER_SIZE;
+    fd_set readfds;
+    fd_set writefds;
+    struct timeval blocktime;
+    int max_fd;
+    int fd;
+    int i;
+    int event;
+
+    max_client_num = 64;
+    blocktime.tv_sec = 1;
+    blocktime.tv_usec = 0;
+    for (i = 0; i < max_client_num; i++) {
+        clients[i].fd = 0;
+        memset(clients[i].buff, 0, BUFFER_SIZE);
+    }
 
     // Create socket
-    sfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sfd == -1) {
+    main_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (main_socket_fd == -1) {
         handle_error("Socket creation failed.");
     }
 
@@ -46,30 +62,78 @@ main() {
     server_addr.sin_addr.s_addr = inet_addr(IP);
 
     // Binding address
-    if (bind(sfd, (struct sockaddr *) &server_addr,
+    if (bind(main_socket_fd, (struct sockaddr *) &server_addr,
                 sizeof(server_addr)) != 0) {
         handle_error("Binding socket to address failed.");
     }
 
     // Listening for new connection
-    if (listen(sfd, BACKLOG) != 0) {
+    if (listen(main_socket_fd, BACKLOG) != 0) {
         handle_error("Listening for new connection failed.");
     }
 
-    // Accepting connection
-    client_conn.addrlen = sizeof(client_addr);
-    client_conn.fd = accept(sfd, (struct sockaddr *) &client_addr,
-            &client_conn.addrlen);
-
-    if (client_conn.fd == -1) {
-        handle_error("Accepting connection failed.");
-    }
-
     while (1) {
-        bzero(client_conn.buff, client_conn.buffsize);
-        read(client_conn.fd, client_conn.buff, client_conn.buffsize);
-        write(client_conn.fd, client_conn.buff, client_conn.buffsize);
+        FD_ZERO(&readfds);
+        FD_SET(main_socket_fd, &readfds);
+        FD_SET(main_socket_fd, &writefds);
+        max_fd = main_socket_fd;
+
+        for (i = 0; i < max_client_num; i++) {
+            fd = clients[i].fd;
+
+            if (fd > 0) {
+                FD_SET(fd, &readfds);
+                FD_SET(fd, &writefds);
+            }
+
+            if (fd > max_fd) {
+                max_fd = fd;
+            }
+        }
+
+        // event = select(max_fd + 1, &readfds, &writefds, NULL, &blocktime);
+        event = select(max_fd + 1, &readfds, NULL, NULL, &blocktime);
+        if (event == -1) {
+            handle_error("Event loop failed.");
+        }
+
+        if (FD_ISSET(main_socket_fd, &readfds)) {
+            // Accepting connection
+            client_conn.addrlen = sizeof(client_addr);
+            client_conn.fd = accept(main_socket_fd,
+                    (struct sockaddr *) &client_addr, &client_conn.addrlen);
+
+            if (client_conn.fd == -1) {
+                handle_error("Accepting connection failed.");
+            }
+
+            for (i = 0; i < max_client_num; i++) {
+                if (clients[i].fd == 0) {
+                    clients[i] = client_conn;
+                    break;
+                }
+            }
+        }
+
+        // for (i = 0; i < max_client_num; i++) {
+        //     if (FD_ISSET(clients[i].fd, &writefds)) {
+        //         printf("inside write\n");
+        //         write(clients[i].fd, clients[i].buff, BUFFER_SIZE);
+        //         break;
+        //     }
+        // }
+
+        for (i = 0; i < max_client_num; i++) {
+            if (FD_ISSET(clients[i].fd, &readfds)) {
+                printf("inside read\n");
+                bzero(clients[i].buff, BUFFER_SIZE);
+                read(clients[i].fd, clients[i].buff, BUFFER_SIZE);
+                write(clients[i].fd, clients[i].buff, BUFFER_SIZE);
+                break;
+            }
+        }
     }
 
-    close(sfd);
+    close(main_socket_fd);
+    return EXIT_SUCCESS;
 }
