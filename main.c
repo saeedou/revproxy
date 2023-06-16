@@ -12,8 +12,8 @@
 
 
 #define BUFFER_SIZE 64
-#define PORT 8004
-#define BACKLOG 8
+#define PORT 8002
+#define BACKLOG 3
 #define IP "127.0.0.1"
 #define handle_error(msg) \
            do {perror(msg); exit(EXIT_FAILURE);} while (0)
@@ -25,6 +25,8 @@ main() {
         int fd;
         int addrlen;
         char buff[BUFFER_SIZE];
+        int readbytes;
+        int writebytes;
     };
 
     int main_socket_fd;
@@ -40,6 +42,7 @@ main() {
     int fd;
     int i;
     int event;
+    int writebytes;
 
     max_client_num = 64;
     blocktime.tv_sec = 1;
@@ -84,6 +87,7 @@ main() {
             if (fd > 0) {
                 FD_SET(fd, &readfds);
                 FD_SET(fd, &writefds);
+                FD_SET(10, &writefds);
             }
 
             if (fd > max_fd) {
@@ -115,21 +119,24 @@ main() {
             }
         }
 
-        // for (i = 0; i < max_client_num; i++) {
-        //     if (FD_ISSET(clients[i].fd, &writefds)) {
-        //         printf("inside write\n");
-        //         write(clients[i].fd, clients[i].buff, BUFFER_SIZE);
-        //         break;
-        //     }
-        // }
-
         for (i = 0; i < max_client_num; i++) {
             if (FD_ISSET(clients[i].fd, &readfds)) {
-                printf("inside read\n");
-                bzero(clients[i].buff, BUFFER_SIZE);
-                read(clients[i].fd, clients[i].buff, BUFFER_SIZE);
-                write(clients[i].fd, clients[i].buff, BUFFER_SIZE);
-                break;
+                if ((clients[i].readbytes = read(clients[i].fd,
+                                clients[i].buff, BUFFER_SIZE)) == 0) {
+                    close(clients[i].fd);
+                    clients[i].fd = 0;
+                    memset(clients[i].buff, 0, BUFFER_SIZE);
+                } else {
+                    clients[i].writebytes = write(clients[i].fd,
+                            clients[i].buff, clients[i].readbytes);
+                    clients[i].writebytes += writebytes;
+
+                    if (clients[i].readbytes == clients[i].writebytes) {
+                        close(clients[i].fd);
+                        clients[i].fd = 0;
+                        memset(clients[i].buff, 0, BUFFER_SIZE);
+                    }
+                }
             }
         }
     }
