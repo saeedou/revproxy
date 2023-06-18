@@ -11,74 +11,79 @@
 #include <sys/select.h>
 
 
-#define BUFFER_SIZE 64
-#define PORT 8002
-#define BACKLOG 3
+#define PORT 8011
+#define BACKLOG 32
 #define IP "127.0.0.1"
+#define BUFFER_SIZE 4096
 #define handle_error(msg) \
            do {perror(msg); exit(EXIT_FAILURE);} while (0)
 
 
+struct connection {
+    int fd;
+    int addrlen;
+    char buff[BUFFER_SIZE];
+    int buffsize;
+    int readbytes;
+    int writebytes;
+};
+
+
+void
+create_listen_sock(int *main_socket_fd);
+
+
+int
+connect_to_server(char *ip, int port);
+
+
+int
+create_remote_sock(char *ip, int port);
+
+
+void
+proxy(struct connection *clients, int remote_server_fd, int max_client_num,
+        fd_set *readfds, fd_set *writefds);
+
+
 int
 main() {
-    struct connection {
-        int fd;
-        int addrlen;
-        char buff[BUFFER_SIZE];
-        int readbytes;
-        int writebytes;
-    };
-
     int main_socket_fd;
-    struct connection clients[4];
+    struct connection clients[64];
     struct connection client_conn;
-    int max_client_num;
-    struct sockaddr_in server_addr;
     struct sockaddr_in client_addr;
-    fd_set readfds;
-    fd_set writefds;
     struct timeval blocktime;
+    int max_client_num;
     int max_fd;
     int fd;
     int i;
     int event;
-    int writebytes;
+    int readbytes;
+    fd_set readfds;
+    fd_set writefds;
+
+    int gport = 8099;
+    char gip[] = "127.0.0.1";
+    int gsock;
 
     max_client_num = 64;
     blocktime.tv_sec = 1;
     blocktime.tv_usec = 0;
     for (i = 0; i < max_client_num; i++) {
         clients[i].fd = 0;
+        clients[i].buffsize = BUFFER_SIZE;
         memset(clients[i].buff, 0, BUFFER_SIZE);
     }
 
-    // Create socket
-    main_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (main_socket_fd == -1) {
-        handle_error("Socket creation failed.");
-    }
+    create_listen_sock(&main_socket_fd);
 
-    // Setup address to bind
-    bzero(&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr(IP);
+    gsock = create_remote_sock(gip, gport);
 
-    // Binding address
-    if (bind(main_socket_fd, (struct sockaddr *) &server_addr,
-                sizeof(server_addr)) != 0) {
-        handle_error("Binding socket to address failed.");
-    }
-
-    // Listening for new connection
-    if (listen(main_socket_fd, BACKLOG) != 0) {
-        handle_error("Listening for new connection failed.");
-    }
 
     while (1) {
         FD_ZERO(&readfds);
         FD_SET(main_socket_fd, &readfds);
-        FD_SET(main_socket_fd, &writefds);
+        // FD_SET(main_socket_fd, &writefds);
         max_fd = main_socket_fd;
 
         for (i = 0; i < max_client_num; i++) {
@@ -86,8 +91,7 @@ main() {
 
             if (fd > 0) {
                 FD_SET(fd, &readfds);
-                FD_SET(fd, &writefds);
-                FD_SET(10, &writefds);
+                // FD_SET(fd, &writefds);
             }
 
             if (fd > max_fd) {
@@ -95,14 +99,13 @@ main() {
             }
         }
 
-        // event = select(max_fd + 1, &readfds, &writefds, NULL, &blocktime);
         event = select(max_fd + 1, &readfds, NULL, NULL, &blocktime);
         if (event == -1) {
             handle_error("Event loop failed.");
         }
 
         if (FD_ISSET(main_socket_fd, &readfds)) {
-            // Accepting connection
+            // Accepting new connection
             client_conn.addrlen = sizeof(client_addr);
             client_conn.fd = accept(main_socket_fd,
                     (struct sockaddr *) &client_addr, &client_conn.addrlen);
@@ -119,28 +122,91 @@ main() {
             }
         }
 
-        for (i = 0; i < max_client_num; i++) {
-            if (FD_ISSET(clients[i].fd, &readfds)) {
-                if ((clients[i].readbytes = read(clients[i].fd,
-                                clients[i].buff, BUFFER_SIZE)) == 0) {
-                    close(clients[i].fd);
-                    clients[i].fd = 0;
-                    memset(clients[i].buff, 0, BUFFER_SIZE);
-                } else {
-                    clients[i].writebytes = write(clients[i].fd,
-                            clients[i].buff, clients[i].readbytes);
-                    clients[i].writebytes += writebytes;
-
-                    if (clients[i].readbytes == clients[i].writebytes) {
-                        close(clients[i].fd);
-                        clients[i].fd = 0;
-                        memset(clients[i].buff, 0, BUFFER_SIZE);
-                    }
-                }
-            }
-        }
+        proxy(clients, gsock, max_client_num, &readfds, &writefds);
     }
 
     close(main_socket_fd);
     return EXIT_SUCCESS;
+}
+
+
+void
+create_listen_sock(int *main_socket_fd) {
+    struct sockaddr_in server_addr;
+
+    *main_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (*main_socket_fd == -1) {
+        handle_error("Socket creation failed.");
+    }
+
+    // Setup address to bind
+    bzero(&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr(IP);
+
+    // Binding address
+    if (bind(*main_socket_fd, (struct sockaddr *) &server_addr,
+                sizeof(server_addr)) != 0) {
+        handle_error("Binding socket to address failed.");
+    }
+
+    // Listening for new connection
+    if (listen(*main_socket_fd, BACKLOG) != 0) {
+        handle_error("Listening for new connection failed.");
+    }
+}
+
+int
+create_remote_sock(char *ip, int port) {
+    int sockfd;
+    struct sockaddr_in server_addr;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Creating socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr(ip);
+    server_addr.sin_port = htons(port);
+
+    if (connect(sockfd, (struct sockaddr *)&server_addr,
+                sizeof(server_addr)) < 0) {
+        perror("connecting failed");
+        exit(EXIT_FAILURE);
+    }
+
+    return sockfd;
+}
+
+
+void
+proxy(struct connection *clients, int remote_server_fd, int max_client_num,
+        fd_set *readfds, fd_set *writefds) {
+    int i;
+    int readbytes;
+
+    for (i = 0; i < max_client_num; i++) {
+        if (FD_ISSET(clients[i].fd, readfds)) {
+            if ((clients[i].readbytes = read(clients[i].fd,
+                            clients[i].buff, BUFFER_SIZE)) == 0) {
+                close(clients[i].fd);
+                clients[i].fd = 0;
+                memset(clients[i].buff, 0, BUFFER_SIZE);
+
+            } else {
+                write(remote_server_fd, clients[i].buff, clients[i].readbytes);
+                readbytes = read(remote_server_fd, clients[i].buff,
+                        clients[i].buffsize);
+                write(clients[i].fd, clients[i].buff, readbytes);
+
+                close(clients[i].fd);
+                clients[i].fd = 0;
+                memset(clients[i].buff, 0, BUFFER_SIZE);
+            }
+        }
+    }
 }
