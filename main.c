@@ -12,24 +12,8 @@
 
 #include "setup_socket.h"
 #include "setup_socket.c"
-
-
-#define PORT 8011
-#define BACKLOG 32
-#define IP "127.0.0.1"
-#define BUFFER_SIZE 4096
-#define handle_error(msg) \
-           do {perror(msg); exit(EXIT_FAILURE);} while (0)
-
-
-struct connection {
-    int fd;
-    int addrlen;
-    char buff[BUFFER_SIZE];
-    int buffsize;
-    int readbytes;
-    int writebytes;
-};
+#include "proxy.h"
+#include "proxy.c"
 
 
 void
@@ -126,33 +110,4 @@ main() {
 
     close(main_socket_fd);
     return EXIT_SUCCESS;
-}
-
-
-void
-proxy(struct connection *clients, int remote_server_fd, int max_client_num,
-        fd_set *readfds, fd_set *writefds) {
-    int i;
-    int readbytes;
-
-    for (i = 0; i < max_client_num; i++) {
-        if (FD_ISSET(clients[i].fd, readfds)) {
-            if ((clients[i].readbytes = read(clients[i].fd,
-                            clients[i].buff, BUFFER_SIZE)) == 0) {
-                close(clients[i].fd);
-                clients[i].fd = 0;
-                memset(clients[i].buff, 0, BUFFER_SIZE);
-
-            } else {
-                write(remote_server_fd, clients[i].buff, clients[i].readbytes);
-                readbytes = read(remote_server_fd, clients[i].buff,
-                        clients[i].buffsize);
-                write(clients[i].fd, clients[i].buff, readbytes);
-
-                close(clients[i].fd);
-                clients[i].fd = 0;
-                memset(clients[i].buff, 0, BUFFER_SIZE);
-            }
-        }
-    }
 }
