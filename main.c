@@ -43,11 +43,11 @@ main() {
     int event;
     int readbytes;
     fd_set readfds;
-    fd_set writefds;
 
-    int gport = 8099;
-    char gip[] = "127.0.0.1";
-    int gsock;
+    int remote_port = 80;
+    // char remote_ip[] = "127.0.0.1";
+    char remote_ip[] = "216.239.38.120";
+    int remote_fd;
 
     max_client_num = 64;
     blocktime.tv_sec = 1;
@@ -56,17 +56,18 @@ main() {
         clients[i].fd = 0;
         clients[i].buffsize = BUFFER_SIZE;
         memset(clients[i].buff, 0, BUFFER_SIZE);
+        clients[i].readflag = 1;
     }
 
     create_listen_sock(&main_socket_fd);
 
-    gsock = create_remote_sock(gip, gport);
+    remote_fd = create_remote_sock(remote_ip, remote_port);
 
 
     while (1) {
         FD_ZERO(&readfds);
         FD_SET(main_socket_fd, &readfds);
-        // FD_SET(main_socket_fd, &writefds);
+        FD_SET(remote_fd, &readfds);
         max_fd = main_socket_fd;
 
         for (i = 0; i < max_client_num; i++) {
@@ -74,7 +75,6 @@ main() {
 
             if (fd > 0) {
                 FD_SET(fd, &readfds);
-                // FD_SET(fd, &writefds);
             }
 
             if (fd > max_fd) {
@@ -105,7 +105,13 @@ main() {
             }
         }
 
-        proxy(clients, gsock, max_client_num, &readfds, &writefds);
+        for (i = 0; i < max_client_num; i++) {
+            if (clients[i].readflag) {
+                client_to_remote(&clients[i], remote_fd, &readfds);
+            } else {
+                remote_to_client(&clients[i], remote_fd, &readfds);
+            }
+        }
     }
 
     close(main_socket_fd);

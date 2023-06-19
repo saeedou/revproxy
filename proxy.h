@@ -14,7 +14,6 @@ struct connection {
     char buff[BUFFER_SIZE];
     int buffsize;
     int readbytes;
-    int writebytes;
     int readflag;
 };
 

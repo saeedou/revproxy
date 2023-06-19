@@ -3,7 +3,7 @@
 
 
 #define PORT 8011
-#define BACKLOG 32
+#define BACKLOG 64
 #define IP "127.0.0.1"
 #define handle_error(msg) \
            do {perror(msg); exit(EXIT_FAILURE);} while (0)
