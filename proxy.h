@@ -5,7 +5,7 @@
 #include "setup_socket.h"
 
 
-#define BUFFER_SIZE 64
+#define BUFFER_SIZE 4096
 
 
 struct connection {
