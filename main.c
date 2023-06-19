@@ -44,9 +44,8 @@ main() {
     int readbytes;
     fd_set readfds;
 
-    int remote_port = 80;
-    // char remote_ip[] = "127.0.0.1";
-    char remote_ip[] = "216.239.38.120";
+    int remote_port = 8080;
+    char remote_ip[] = "127.0.0.1";
     int remote_fd;
 
     max_client_num = 64;
@@ -104,6 +103,7 @@ main() {
                 }
             }
         }
+
 
         for (i = 0; i < max_client_num; i++) {
             if (clients[i].readflag) {
