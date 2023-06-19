@@ -18,42 +18,51 @@ tmpfile_open() {
 
 
 void
-test_proxy() {
+test_client_to_remote() {
     /* Setup */
-    struct connection client1;
+    struct connection client;
     fd_set readfds;
     int fd;
     char buff[8];
 
-    client1.fd = tmpfile_open();
-    client1.readflag = 1;
-    memset(client1.buff, 0, sizeof(client1.buff));
+    client.fd = tmpfile_open();
+    client.readflag = 1;
+    memset(client.buff, 0, sizeof(client.buff));
     memset(buff, 'x', 8);
 
     /* read empty file */
-    eqint(-1, client_to_remote(&client1, fd, &readfds));
+    eqint(-1, client_to_remote(&client, fd, &readfds));
     FD_ZERO(&readfds);
-    istrue(client1.fd > 0);
-    FD_SET(client1.fd, &readfds);
+    istrue(client.fd > 0);
+    FD_SET(client.fd, &readfds);
     fd = tmpfile_open();
     istrue(fd > 0);
-    eqint(-1, client_to_remote(&client1, fd, &readfds));
+    eqint(-1, client_to_remote(&client, fd, &readfds));
 
     /* previous fd close */
-    client1.fd = tmpfile_open();
+    client.fd = tmpfile_open();
 
     /* put some data in fd */
-    write(client1.fd, buff, 8);
+    write(client.fd, buff, 8);
 
-    write(client1.fd, buff, 8);
-    lseek(client1.fd, 0, SEEK_SET);
+    write(client.fd, buff, 8);
+    lseek(client.fd, 0, SEEK_SET);
 
-    eqint(0, client_to_remote(&client1, fd, &readfds));
-    eqchr('x', client1.buff[0]);
+    eqint(1, client.readflag);
+    eqint(0, client_to_remote(&client, fd, &readfds));
+    eqchr('x', client.buff[0]);
+    eqint(0, client.readflag);
 }
+
+
+void
+test_remote_to_client() {
+    /* setup */
+}
+
 
 int
 main() {
-    test_proxy();
+    test_client_to_remote();
     return EXIT_SUCCESS;
 }
