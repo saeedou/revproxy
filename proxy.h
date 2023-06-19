@@ -15,13 +15,18 @@ struct connection {
     int buffsize;
     int readbytes;
     int writebytes;
+    int readflag;
 };
 
 
-void
-proxy(struct connection *clients, int remote_server_fd, int max_client_num,
-        fd_set *readfds, fd_set *writefds);
+int
+client_to_remote(struct connection *client, int remote_server_fd,
+        fd_set *readfds);
 
+
+int
+remote_to_client(struct connection *client, int remote_server_fd,
+        fd_set *readfds);
 
 
 #endif

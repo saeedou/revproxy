@@ -1,30 +1,45 @@
 #include "proxy.h"
 
 
-void
-proxy(struct connection *clients, int remote_server_fd, int max_client_num,
-        fd_set *readfds, fd_set *writefds) {
-    int i;
-    int readbytes;
+int
+client_to_remote(struct connection *client, int remote_server_fd,
+        fd_set *readfds) {
+    if (FD_ISSET(client->fd, readfds)) {
+        if ((client->readbytes = read(client->fd,
+                        client->buff, BUFFER_SIZE)) == 0) {
+            close(client->fd);
+            client->fd = 0;
+            memset(client->buff, 0, BUFFER_SIZE);
+            return -1;
 
-    for (i = 0; i < max_client_num; i++) {
-        if (FD_ISSET(clients[i].fd, readfds)) {
-            if ((clients[i].readbytes = read(clients[i].fd,
-                            clients[i].buff, BUFFER_SIZE)) == 0) {
-                close(clients[i].fd);
-                clients[i].fd = 0;
-                memset(clients[i].buff, 0, BUFFER_SIZE);
-
-            } else {
-                write(remote_server_fd, clients[i].buff, clients[i].readbytes);
-                readbytes = read(remote_server_fd, clients[i].buff,
-                        clients[i].buffsize);
-                write(clients[i].fd, clients[i].buff, readbytes);
-
-                close(clients[i].fd);
-                clients[i].fd = 0;
-                memset(clients[i].buff, 0, BUFFER_SIZE);
-            }
+        } else {
+            write(remote_server_fd, client->buff,
+                    client->readbytes);
+            client->readflag = 0;
+            return 0;
         }
     }
+    return -1;
+}
+
+
+int
+remote_to_client(struct connection *client, int remote_server_fd,
+        fd_set *readfds) {
+    if (FD_ISSET(remote_server_fd, readfds)) {
+        if ((client->readbytes = read(remote_server_fd,
+                        client->buff, BUFFER_SIZE)) == 0) {
+            close(client->fd);
+            client->fd = 0;
+            memset(client->buff, 0, BUFFER_SIZE);
+            return -1;
+
+        } else {
+            write(client->fd, client->buff,
+                    client->readbytes);
+            client->readflag = 1;
+            return 0;
+        }
+    }
+    return -1;
 }
