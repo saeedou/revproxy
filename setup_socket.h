@@ -1,3 +1,5 @@
+// Copyright 2023 Saeed Mahmoodi
+
 #ifndef SETUP_SOCKET_H
 #define SETUP_SOCKET_H
 

@@ -1,12 +1,14 @@
+// Copyright 2023 Saeed Mahmoodi
+
 #include "setup_socket.h"
 
 
 void
-create_listen_sock(int *main_socket_fd) {
+create_listen_sock(int *socket_fd) {
     struct sockaddr_in server_addr;
 
-    *main_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (*main_socket_fd == -1) {
+    *socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (*socket_fd == -1) {
         handle_error("Socket creation failed.");
     }
 
@@ -17,13 +19,13 @@ create_listen_sock(int *main_socket_fd) {
     server_addr.sin_addr.s_addr = inet_addr(IP);
 
     // Binding address
-    if (bind(*main_socket_fd, (struct sockaddr *) &server_addr,
+    if (bind(*socket_fd, (struct sockaddr *) &server_addr,
                 sizeof(server_addr)) != 0) {
         handle_error("Binding socket to address failed.");
     }
 
     // Listening for new connection
-    if (listen(*main_socket_fd, BACKLOG) != 0) {
+    if (listen(*socket_fd, BACKLOG) != 0) {
         handle_error("Listening for new connection failed.");
     }
 }

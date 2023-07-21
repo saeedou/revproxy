@@ -1,3 +1,5 @@
+// Copyright 2023 Saeed Mahmoodi
+
 #ifndef PROXY_H
 #define PROXY_H
 
@@ -10,22 +12,19 @@
 
 struct connection {
     int fd;
+    int remote_fd;
     int addrlen;
     char buff[BUFFER_SIZE];
     int buffsize;
-    int readbytes;
-    int readflag;
 };
 
 
 int
-client_to_remote(struct connection *client, int remote_server_fd,
-        fd_set *readfds);
+client_to_remote(struct connection *client);
 
 
 int
-remote_to_client(struct connection *client, int remote_server_fd,
-        fd_set *readfds);
+remote_to_client(struct connection *client);
 
 
 #endif
