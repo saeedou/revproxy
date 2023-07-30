@@ -4,90 +4,64 @@
 #include <unistd.h>
 #include <string.h>
 
+
+static int write_mock = 0;
+#define write(...) 0; \
+    switch (write_mock) { \
+        case 0: \
+            writebytes = write(__VA_ARGS__); \
+            break; \
+        case 1: \
+            writebytes = -1; \
+        break; \
+    }
+
+
 #include "proxy.h"
 #include "proxy.c"
+
+
+// Using smaller buffer to make testing easier.
+#undef BUFFER_SIZE
+#define BUFFER_SIZE 8
 
 
 int
 tmpfile_open() {
     FILE *file;
 
+    // Create stream descriptor and return file descriptor
     file = tmpfile();
     return fileno(file);
 }
 
 
 void
-test_client_to_remote() {
-    /* Setup */
-    struct connection client;
-    fd_set readfds;
-    int remote_fd;
-    char buff[8] = "01234567";
+test__send_all() {
+    int fd = tmpfile_open();
+    char buffer[] = "foo";
+    char read_buffer[3];
+    int len = 3;
 
-    client.fd = tmpfile_open();
-    client.readflag = 1;
-    memset(client.buff, 0, sizeof(client.buff));
+    // Use the original write()
+    write_mock = 0;
+    eqint(0, _send_all(fd, buffer, len));
 
-    /* read empty file */
-    eqint(-1, client_to_remote(&client, remote_fd, &readfds));
-    FD_ZERO(&readfds);
-    istrue(client.fd > 0);
-    FD_SET(client.fd, &readfds);
-    remote_fd = tmpfile_open();
-    istrue(remote_fd > 0);
-    eqint(-1, client_to_remote(&client, remote_fd, &readfds));
+    lseek(fd, 0, SEEK_SET);
+    read(fd, read_buffer, len);
+    eqnstr("foo", read_buffer, 3);
 
-    /* previous fd close */
-    client.fd = tmpfile_open();
+    write_mock = 1;
+    eqint(-1, _send_all(fd, buffer, len));
 
-    /* put some data in fd */
-    write(client.fd, buff, 8);
-
-    write(client.fd, buff, 8);
-    lseek(client.fd, 0, SEEK_SET);
-
-    eqint(1, client.readflag);
-    eqint(0, client_to_remote(&client, remote_fd, &readfds));
-    eqchr('3', client.buff[3]);
-    eqint(0, client.readflag);
-
-    /* teardown */
-    close(remote_fd);
-}
-
-
-void
-test_remote_to_client() {
-    /* setup */
-    struct connection client;
-    fd_set readfds;
-    int remote_fd;
-    char buff[8] = "01234567";
-
-    client.fd = tmpfile_open();
-    client.readflag = 1;
-    memset(client.buff, 0, sizeof(client.buff));
-    eqint(-1, remote_to_client(&client, remote_fd, &readfds));
-
-    FD_ZERO(&readfds);
-    FD_SET(remote_fd, &readfds);
-    eqint(-1, remote_to_client(&client, remote_fd, &readfds));
-    
-    client.fd = tmpfile_open();
-    write(remote_fd, buff, 8);
-    lseek(remote_fd, 0, SEEK_SET);
-    eqint(0, remote_to_client(&client, remote_fd, &readfds));
-    eqchr('4', client.buff[4]);
-
-    /* teardown */
-    close(remote_fd);
+    // Teardown
+    close(fd);
+    write_mock = 0;
 }
 
 
 int
 main() {
-    test_client_to_remote();
-    test_remote_to_client();
+    test__send_all();
     return EXIT_SUCCESS;
 }
