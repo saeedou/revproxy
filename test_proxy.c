@@ -19,6 +19,7 @@ static int write_mock = 0;
 
 #include "proxy.h"
 #include "proxy.c"
+#undef write
 
 
 // Using smaller buffer to make testing easier.
@@ -60,8 +61,43 @@ test__send_all() {
 }
 
 
+void
+test_client_to_remote() {
+    /* Setup */
+    struct connection client;
+    char buff[8];
+    int zero_arr[sizeof(client.buff)];
+    memset(zero_arr, 0, sizeof(zero_arr));
+    client.fd = tmpfile_open();
+    client.remote_fd = tmpfile_open();
+
+    write(client.fd, "12345678", 8);
+    lseek(client.fd, 0, SEEK_SET);
+
+    // send the data to remote
+    eqint(0, client_to_remote(&client));
+    lseek(client.remote_fd, 0, SEEK_SET);
+    read(client.remote_fd, buff, 8);
+    eqstr("12345678", buff);
+    eqbin(zero_arr, client.buff, sizeof(client.buff));
+
+    // send the data to client
+    write(client.fd, "12345678", 8);
+    lseek(client.fd, 0, SEEK_SET);
+
+    write_mock = 1;
+    eqint(-1, client_to_remote(&client));
+
+    /* teardown */
+    close(client.fd);
+    close(client.remote_fd);
+    write_mock = 0;
+}
+
+
 int
 main() {
     test__send_all();
+    test_client_to_remote();
     return EXIT_SUCCESS;
 }

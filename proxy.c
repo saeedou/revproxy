@@ -8,7 +8,24 @@
 #include "proxy.h"
 
 
-int _send_all(int fd, char *buff, int len);
+// send all data from buffer to file descriptor
+int
+_send_all(int fd, char *buff, int len) {
+    int total = 0;
+    int bytesleft = len;
+    int writebytes;
+
+    while (total < len) {
+        writebytes = write(fd, buff + total, bytesleft);
+        if (writebytes == -1) {
+            break;
+        }
+        total += writebytes;
+        bytesleft -= writebytes;
+    }
+
+    return writebytes == -1 ? -1 : 0;
+}
 
 
 // Send data from client to remote server
@@ -52,24 +69,4 @@ remote_to_client(struct connection *client) {
     client->remote_fd = 0;
     memset(client->buff, 0, BUFFER_SIZE);
     return 0;
-}
-
-
-// send all data from buffer to file descriptor
-int
-_send_all(int fd, char *buff, int len) {
-    int total = 0;
-    int bytesleft = len;
-    int writebytes;
-
-    while (total < len) {
-        writebytes = write(fd, buff + total, bytesleft);
-        if (writebytes == -1) {
-            break;
-        }
-        total += writebytes;
-        bytesleft -= writebytes;
-    }
-
-    return writebytes == -1 ? -1 : 0;
 }
