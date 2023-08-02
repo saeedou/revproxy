@@ -1,7 +1,6 @@
 // Copyright 2023 Saeed Mahmoodi
 
 #include <unistd.h>
-#include <stdio.h>
 #include <errno.h>
 #include <string.h>
 
@@ -38,7 +37,6 @@ client_to_remote(struct connection *client) {
         readbytes = read(client->fd, client->buff, BUFFER_SIZE);
         send_status = _send_all(client->remote_fd, client->buff, readbytes);
         if (send_status == -1) {
-            puts("Could not send the data.");
             return -1;
         }
     } while ( readbytes > 0);
@@ -58,7 +56,6 @@ remote_to_client(struct connection *client) {
         readbytes = read(client->remote_fd, client->buff, BUFFER_SIZE);
         send_status = _send_all(client->fd, client->buff, readbytes);
         if (send_status == -1) {
-            puts("Could not send the data.");
             return -1;
         }
     } while ( readbytes > 0);
