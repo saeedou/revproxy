@@ -39,6 +39,7 @@ tmpfile_open() {
 
 void
 test__send_all() {
+    // Setup
     int fd = tmpfile_open();
     char buffer[] = "foo";
     char read_buffer[3];
@@ -95,9 +96,45 @@ test_client_to_remote() {
 }
 
 
+void
+test_remote_to_client() {
+    /* setup */
+    struct connection client;
+    client.fd = tmpfile_open();
+    client.remote_fd = tmpfile_open();
+    char buff_foo[8] = "87654321";
+    write(client.remote_fd, buff_foo, 8);
+    lseek(client.remote_fd, 0, SEEK_SET);
+
+    // assert
+    eqint(0, remote_to_client(&client));
+
+    /* setup */
+    char buff_bar[8];
+    lseek(client.fd, 0, SEEK_SET);
+    read(client.fd, buff_bar, 8);
+
+    /* assert */
+    eqnstr(buff_foo, buff_bar, 8);
+
+    /* setup */
+    write_mock = 1;
+    lseek(client.remote_fd, 0, SEEK_SET);
+    
+    /* assert */
+    eqint(-1, remote_to_client(&client));
+
+    /* teardown */
+    close(client.remote_fd);
+    close(client.fd);
+    write_mock = 0;
+}
+
+
 int
 main() {
     test__send_all();
     test_client_to_remote();
+    test_remote_to_client();
     return EXIT_SUCCESS;
 }

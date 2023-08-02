@@ -38,7 +38,7 @@ client_to_remote(struct connection *client) {
         readbytes = read(client->fd, client->buff, BUFFER_SIZE);
         send_status = _send_all(client->remote_fd, client->buff, readbytes);
         if (send_status == -1) {
-            perror("Could not send the data.");
+            puts("Could not send the data.");
             return -1;
         }
     } while ( readbytes > 0);
@@ -58,15 +58,11 @@ remote_to_client(struct connection *client) {
         readbytes = read(client->remote_fd, client->buff, BUFFER_SIZE);
         send_status = _send_all(client->fd, client->buff, readbytes);
         if (send_status == -1) {
-            perror("Could not send the data.");
+            puts("Could not send the data.");
             return -1;
         }
     } while ( readbytes > 0);
 
-    close(client->fd);
-    close(client->remote_fd);
-    client->fd = 0;
-    client->remote_fd = 0;
     memset(client->buff, 0, BUFFER_SIZE);
     return 0;
 }
