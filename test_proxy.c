@@ -1,3 +1,5 @@
+// Copyright 2023 Saeed Mahmoodi
+
 #include <cutest.h>
 #include <sys/select.h>
 #include <sys/types.h>
@@ -120,7 +122,7 @@ test_remote_to_client() {
     /* setup */
     write_mock = 1;
     lseek(client.remote_fd, 0, SEEK_SET);
-    
+
     /* assert */
     eqint(-1, remote_to_client(&client));
 

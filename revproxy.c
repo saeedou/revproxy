@@ -97,7 +97,7 @@ main() {
             // Handling data exchange
             for (i = 0; i < max_client_num; i++) {
                 if (FD_ISSET(clients[i].remote_fd, &readfds)) {
-                    if(!remote_to_client(clients + i)) {
+                    if (!remote_to_client(clients + i)) {
                         close(clients[i].fd);
                         close(clients[i].remote_fd);
                         clients[i].fd = 0;
