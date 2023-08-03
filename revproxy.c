@@ -102,6 +102,7 @@ main() {
                         close(clients[i].remote_fd);
                         clients[i].fd = 0;
                         clients[i].remote_fd = 0;
+                    }
                 }
 
                 if (FD_ISSET(clients[i].fd, &readfds)) {
