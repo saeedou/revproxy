@@ -3,7 +3,9 @@
 #define SETUP_SOCKET_H_
 
 
-#define BACKLOG 256
+#ifndef BACKLOG
+    #define BACKLOG 256
+#endif
 
 
 void create_listen_sock(int *socket_fd, char *ip, int *port);
