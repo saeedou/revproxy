@@ -116,11 +116,25 @@ test_init_pollfds() {
 }
 
 
+void
+test_which_client() {
+    struct client_conn clients[2];
+
+    clients[0].pfds.fd = 0;
+    clients[1].pfds.fd = 1;
+
+
+    eqint(1, which_client(clients, 1));
+    eqint(-1, which_client(clients, 2));
+}
+
+
 int
 main() {
     test_set_client();
     test_remove_client();
     test_init_pollfds();
+    test_which_client();
 
     return EXIT_SUCCESS;
 }

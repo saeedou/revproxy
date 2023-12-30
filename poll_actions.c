@@ -47,3 +47,14 @@ init_pollfds(struct client_conn *clients, struct pollfd *pfds) {
         pfds[i].fd = clients[i].pfds.fd;
     }
 }
+
+
+int
+which_client(struct client_conn *clients, int fd) {
+    for (int i = 0; i < BACKLOG; i++) {
+        if (clients[i].pfds.fd == fd) {
+            return i;
+        }
+    }
+    return -1;
+}
