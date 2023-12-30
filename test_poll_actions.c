@@ -99,10 +99,28 @@ test_remove_client() {
 }
 
 
+void
+test_init_pollfds() {
+    /* Setup */
+    struct pollfd pfds[3];
+    struct client_conn clients[3];
+
+    /* Arrangement */
+    memset(pfds, 0, sizeof(pfds));
+    for (int i = 0; i < 3; i++) {
+        clients[i].pfds.fd = i + 2;
+    }
+
+    init_pollfds(clients, pfds);
+    eqint(2, pfds[0].fd);
+}
+
+
 int
 main() {
     test_set_client();
     test_remove_client();
+    test_init_pollfds();
 
     return EXIT_SUCCESS;
 }

@@ -39,3 +39,11 @@ remove_client(struct client_conn *client_conn, int fd) {
     }
     return -1;
 }
+
+
+void
+init_pollfds(struct client_conn *clients, struct pollfd *pfds) {
+    for (int i = 0; i < BACKLOG; i++) {
+        pfds[i].fd = clients[i].pfds.fd;
+    }
+}
