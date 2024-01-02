@@ -18,7 +18,7 @@ void
 create_listen_sock(int *socket_fd, char *ip, int *port) {
     struct sockaddr_in server_addr;
 
-    *socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    *socket_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (*socket_fd == -1) {
         handle_error("Socket creation failed.");
     }
