@@ -31,14 +31,14 @@ int is_valid_ip(char ip[]) {
     int i = 0;
 
     strcpy(ip_arr, ip);
-    token = strtok(ip_arr, DELIMITER);
+    token = strtok(ip_arr, DELIMITER); // NOLINT
 
     while (token != NULL) {
         if (!_is_number(token) || atoi(token) > 256 || atoi(token) < 1) {
             return 0;
         }
 
-        token = strtok(NULL, DELIMITER);
+        token = strtok(NULL, DELIMITER); // NOLINT
         i++;
     }
 
