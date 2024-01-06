@@ -32,8 +32,10 @@ remove_client(struct client_conn *client_conn, int fd) {
             client_conn[i].pfds.fd = -1;
             client_conn[i].pfds.revents = 0;
             client_conn[i].client_addr = sock_addr;
-            free(client_conn[i].buff);
-            client_conn[i].buff = NULL;
+            free(client_conn[i].readbuff);
+            client_conn[i].readbuff = NULL;
+            free(client_conn[i].writebuff);
+            client_conn[i].writebuff = NULL;
             return 0;
         }
     }

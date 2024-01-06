@@ -5,15 +5,15 @@
 
 #define BACKLOG 4
 
-static int is_free_called = 0;
-static char *mock_free_ptr;
+
+static int free_call_count = 0;
+static void *mock_free_ptr[2];
 #define free(ptr) mock_free(ptr)
 
 /* function call and argument checking */
 void mock_free(void *ptr) {
-    is_free_called = 1;
-    mock_free_ptr = ptr;
-    // free(ptr);
+    free_call_count++;
+    mock_free_ptr[free_call_count - 1] = ptr;
 }
 
 
@@ -58,19 +58,22 @@ void test_set_client() {
 }
 
 
-int
+void
 test_remove_client() {
     int client_fd = 1;
     int client_addr_size;
-    char *hold_ptr;
+    char *hold_ptr1;
+    char *hold_ptr2;
     struct client_conn clients[2];
     struct sockaddr_in client_addr;
 
     /* Arrangement */
     client_addr_size = sizeof(struct sockaddr_in);
     memset(&client_addr, 1, client_addr_size);
-    clients[1].buff = malloc(1);
-    hold_ptr = clients[1].buff;
+    clients[1].readbuff = malloc(1);
+    clients[1].writebuff = malloc(1);
+    hold_ptr1 = clients[1].readbuff;
+    hold_ptr2 = clients[1].writebuff;
     for (int i = 0; i < 2; i++) {
         clients[i].pfds.fd = i;
         clients[i].client_addr = client_addr;
@@ -78,24 +81,27 @@ test_remove_client() {
 
     /* Status checking */
     eqint(1, clients[1].pfds.fd);
-    isnotnull(clients[1].buff);
-    eqint(0, is_free_called);
-    isnull(mock_free_ptr);
+    eqint(0, free_call_count);
+    isnull(mock_free_ptr[1]);
+    isnull(mock_free_ptr[0]);
 
-    /* Reseting client  */
+    /* Assert resetting client  */
     eqint(0, remove_client(clients, client_fd));
     eqint(-1, clients[1].pfds.fd);
     eqint(0, clients[1].pfds.revents);
-    eqint(1, is_free_called);
-    istrue(hold_ptr == mock_free_ptr);
-    isnull(clients[1].buff);
+    eqint(2, free_call_count);
+    istrue(hold_ptr1 == mock_free_ptr[0]);
+    istrue(hold_ptr2 == mock_free_ptr[1]);
+    isnull(clients[1].readbuff);
+    isnull(clients[1].writebuff);
     istrue(memcmp(&clients[1].client_addr, &client_addr, \
                 client_addr_size) < 0);
     eqint(-1, remove_client(clients, 4));
 
     /* Teardown */
-    #undef mock_free
-    free(clients[1].buff);
+    #undef free
+    free(clients[1].readbuff);
+    free(clients[1].writebuff);
 }
 
 
