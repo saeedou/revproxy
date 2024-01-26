@@ -19,8 +19,6 @@
 struct client_conn {
     struct pollfd pfds;
     struct sockaddr_in client_addr;
-    char *readbuff;
-    char *writebuff;
 };
 
 

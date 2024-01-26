@@ -5,18 +5,6 @@
 
 #define BACKLOG 4
 
-
-static int free_call_count = 0;
-static void *mock_free_ptr[2];
-#define free(ptr) mock_free(ptr)
-
-/* function call and argument checking */
-void mock_free(void *ptr) {
-    free_call_count++;
-    mock_free_ptr[free_call_count - 1] = ptr;
-}
-
-
 #include "poll_actions.h"
 #include "poll_actions.c"
 
@@ -70,10 +58,6 @@ test_remove_client() {
     /* Arrangement */
     client_addr_size = sizeof(struct sockaddr_in);
     memset(&client_addr, 1, client_addr_size);
-    clients[1].readbuff = malloc(1);
-    clients[1].writebuff = malloc(1);
-    hold_ptr1 = clients[1].readbuff;
-    hold_ptr2 = clients[1].writebuff;
     for (int i = 0; i < 2; i++) {
         clients[i].pfds.fd = i;
         clients[i].client_addr = client_addr;
@@ -81,27 +65,14 @@ test_remove_client() {
 
     /* Status checking */
     eqint(1, clients[1].pfds.fd);
-    eqint(0, free_call_count);
-    isnull(mock_free_ptr[1]);
-    isnull(mock_free_ptr[0]);
 
     /* Assert resetting client  */
     eqint(0, remove_client(clients, client_fd));
     eqint(-1, clients[1].pfds.fd);
     eqint(0, clients[1].pfds.revents);
-    eqint(2, free_call_count);
-    istrue(hold_ptr1 == mock_free_ptr[0]);
-    istrue(hold_ptr2 == mock_free_ptr[1]);
-    isnull(clients[1].readbuff);
-    isnull(clients[1].writebuff);
     istrue(memcmp(&clients[1].client_addr, &client_addr, \
                 client_addr_size) < 0);
     eqint(-1, remove_client(clients, 4));
-
-    /* Teardown */
-    #undef free
-    free(clients[1].readbuff);
-    free(clients[1].writebuff);
 }
 
 
