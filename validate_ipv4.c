@@ -10,7 +10,8 @@
 #define DELIMITER "."
 
 
-int _is_number(char *string) {
+int
+_is_number(char *string) {
     int i = 0;
 
     while (string[i] != '\0') {
@@ -24,7 +25,8 @@ int _is_number(char *string) {
 }
 
 
-int is_valid_ip(char ip[]) {
+int
+is_valid_ip(char ip[]) {
     int size = strlen(ip) + 1;
     char ip_arr[size];
     char *token;

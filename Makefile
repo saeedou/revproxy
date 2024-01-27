@@ -7,8 +7,11 @@ cov:
 	@gcc -Wl,--wrap=read -Wl,--wrap=write -fprofile-arcs -ftest-coverage \
 		test_redirect.c -o test_redirect
 	./test_redirect > /dev/null
+	@gcc -fprofile-arcs -ftest-coverage test_validate_ipv4.c \
+		-o test_validate_ipv4
+	./test_validate_ipv4 > /dev/null
 	gcovr .
-	@rm -f *.gc* test_poll_actions test_redirect
+	@rm -f *.gc* test_poll_actions test_redirect test_validate_ipv4
 
 
 test:
@@ -16,6 +19,8 @@ test:
 	./test_poll_actions
 	@gcc test_redirect.c -Wl,--wrap=read -Wl,--wrap=write -o test_redirect
 	./test_redirect
+	@gcc test_validate_ipv4.c -o test_validate_ipv4
+	./test_validate_ipv4
 	make clean
 
 
@@ -24,5 +29,7 @@ lint:
 
 
 clean:
+	@rm -f *.gc*
 	@rm -f test_poll_actions
 	@rm -f test_redirect
+	@rm -f test_validate_ipv4
